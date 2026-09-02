@@ -1,5 +1,6 @@
 package com.example.url_shortener.service;
 
+import com.example.url_shortener.exception.ShortUrlNotFoundException;
 import com.example.url_shortener.dto.CreateShortUrlResponse;
 import com.example.url_shortener.entity.ShortUrl;
 import com.example.url_shortener.repository.ShortUrlRepository;
@@ -38,6 +39,12 @@ public class UrlService {
                 "http://localhost:8080/" + saved.getShortCode(),
                 saved.getOriginalUrl()
         );
+    }
+    public String getOriginalUrl(String shortCode) {
+        ShortUrl shortUrl = shortUrlRepository.findByShortCode(shortCode)
+                .orElseThrow(() -> new ShortUrlNotFoundException(shortCode));
+
+        return shortUrl.getOriginalUrl();
     }
 
     private String generateUniqueShortCode() {
