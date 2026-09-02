@@ -28,6 +28,7 @@ public class UrlService {
     }
 
     public CreateShortUrlResponse createShortUrl(String originalUrl) {
+        validateUrl(originalUrl);
         String shortCode = generateUniqueShortCode();
 
         ShortUrl shortUrl = new ShortUrl();
@@ -37,7 +38,6 @@ public class UrlService {
         shortUrl.setClickCount(0L);
 
         ShortUrl saved = shortUrlRepository.save(shortUrl);
-        validateUrl(originalUrl);
         return new CreateShortUrlResponse(
                 saved.getShortCode(),
                 "http://localhost:8080/" + saved.getShortCode(),

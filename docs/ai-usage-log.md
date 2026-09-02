@@ -309,127 +309,66 @@ I accepted the design change because it makes the API contract clearer and avoid
 
 ---
 
-## How I am using AI in this project
-
-I am following a few rules throughout the implementation:
-
-1. AI-generated code is treated as a suggestion, not automatically accepted code.
-2. I review changes before keeping them.
-3. Generated code must compile and pass the same tests as manually written code.
-4. Important flows are also tested through the running API.
-5. I record meaningful failures or changes instead of only documenting successful AI suggestions.
-6. I do not provide production credentials, secrets, tokens, or sensitive data to AI tools.
-7. Architecture and tradeoff decisions remain my responsibility.
-
-The goal is not to have AI build the application autonomously. I am using AI to speed up parts of the engineering workflow while keeping review, validation, and final decisions under engineer control.
-
-I discussed the assignment requirements along with the role requirements and used AI to help narrow down the stack and development approach.
-
-The initial recommendation was Spring Boot with PostgreSQL/JPA for persistence and Kafka for analytics.
-
-**My decision**
-
-I went with:
-
-- Java 17
-- Spring Boot
-- Maven
-- Spring Data JPA / Hibernate
-- PostgreSQL
-- Flyway
-- Kafka for analytics
-- Docker for local infrastructure
-
-I decided not to introduce Kafka immediately. I want to get the basic create/redirect flow working first and then add asynchronous analytics. This keeps the first implementation small and gives me a working vertical slice before adding another dependency.
-
----
-
-## 2. Local PostgreSQL setup
+## 9. Service-level testing and validation ordering
 
 **What I was working on**
 
-The application failed to start after adding Spring Data JPA and the PostgreSQL driver because there was no configured datasource.
+After manually validating the create and redirect flows, I wanted automated tests around the service layer so that the core behavior could be verified without running the full application manually.
 
 **How I used AI**
 
-I used AI to troubleshoot the startup error and set up PostgreSQL locally using Docker.
+I used ChatGPT to identify useful service-level test cases and generate an initial Mockito-based test structure.
 
-There was also an issue starting the local Docker daemon through Colima. I used AI to interpret the error and fix the local environment before continuing with application development.
+The initial tests covered:
 
-**My decision**
+* creating a shortened URL
+* resolving an existing short code
+* rejecting an invalid URL
+* handling a missing short code
 
-I kept PostgreSQL rather than switching to an embedded database such as H2 just to make the application start.
+The existing Spring context test was also still part of the Maven test suite.
 
-Since PostgreSQL is the database I intend to use for the application, I preferred to develop against it from the beginning.
+**What happened**
 
-**Validation**
+The first two service tests passed, but the negative test for an invalid URL failed.
 
-I verified that the PostgreSQL container was running and then started the Spring Boot application successfully.
+The test expected an invalid URL to be rejected without interacting with the repository. Mockito reported that the repository had already been called through the short-code generation flow.
 
----
+This showed that URL validation was happening too late in `createShortUrl()`.
 
-## 3. Database schema management
+The service was attempting to generate/check a short code before validating the input URL.
 
-**What I was working on**
+**What I changed**
 
-I needed a repeatable way to create and evolve the database schema.
+I moved:
 
-**How I used AI**
+`validateUrl(originalUrl)`
 
-AI suggested using Flyway migrations rather than allowing Hibernate to automatically create or update the database schema.
+to the beginning of `createShortUrl()`.
 
-**My decision**
+This means invalid input is now rejected before short-code generation or any repository/database interaction occurs.
 
-I used Flyway and configured Hibernate with schema validation.
+I kept the `verifyNoInteractions(shortUrlRepository)` assertion because it documents the intended behavior: invalid requests should fail early and should not cause unnecessary persistence operations.
 
-The first migration creates the `short_urls` table and the index used for short-code lookups.
+**How I validated it**
 
-I also disabled Open Session in View because I don't want database access happening implicitly outside the intended service/repository flow.
+I ran:
 
-**Validation**
+`./mvnw test`
 
-Spring Boot successfully started with:
+Before the change:
 
-- Flyway migration applied
-- Hibernate schema validation enabled
-- JPA EntityManagerFactory initialized
+`Tests run: 5, Failures: 1`
 
----
+After moving validation to the beginning of the service method, all tests passed:
 
-## 4. ShortUrl JPA entity
+`Tests run: 5, Failures: 0, Errors: 0`
 
-**What I was working on**
+**AI tool:** ChatGPT
+**Outcome:** AI-generated test exposed an implementation issue; implementation was edited and revalidated
 
-I created the first JPA entity corresponding to the `short_urls` table.
+**What I learned**
 
-**How I used AI**
+This was a useful example of using AI for more than generating production code. The suggested negative test exposed behavior that had passed the earlier happy-path tests and manual API checks.
 
-AI provided an initial version of the entity and its JPA mappings.
-
-The generated code initially used the package:
-
-`com.example.urlshortener.entity`
-
-while my Spring Boot project uses:
-
-`com.example.url_shortener.entity`
-
-This caused the Spring context test to fail because Hibernate could not instantiate the entity.
-
-**My decision**
-
-I did not work around the failing test or remove it. I traced the nested exception, found the package mismatch, corrected the entity package, cleaned the Maven build, and ran the tests again.
-
-**Validation**
-
-Command:
-
-`./mvnw clean test`
-
-Result:
-
-`Tests run: 1, Failures: 0, Errors: 0`
-
-`BUILD SUCCESS`
-
-This was also a useful reminder that AI-generated code still needs to be treated like any other code change: compile it, test it, understand failures, and correct it before moving forward.
+The important part was not simply making the test green. I reviewed why the repository was being called and changed the service ordering so invalid input fails before unnecessary work is performed.
