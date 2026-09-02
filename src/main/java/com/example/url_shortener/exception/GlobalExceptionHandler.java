@@ -21,4 +21,15 @@ public class GlobalExceptionHandler {
                         "message", ex.getMessage()
                 ));
     }
+    @ExceptionHandler(InvalidUrlException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidUrl(
+            InvalidUrlException ex
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(Map.of(
+                        "error", "INVALID_URL",
+                        "message", ex.getMessage()
+                ));
+    }
 }
