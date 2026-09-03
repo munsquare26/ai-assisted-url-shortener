@@ -406,23 +406,6 @@ HTTP 410 Gone
 
 
 The project was manually validated in addition to automated testing.
-
-## URL Creation
-
-![Create short URL](docs/screenshots/create-short-url.png)
-
-## URL Validation
-
-![Invalid URL validation](docs/screenshots/invalid-url-validation.png)
-
-## Database Persistence
-
-![Database record](docs/screenshots/database-record.png)
-
-## Redirect
-
-![Short URL redirect](docs/screenshots/redirect-short-url.png)
-
 ---
 
 # Database
