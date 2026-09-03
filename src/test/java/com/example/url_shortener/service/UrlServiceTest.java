@@ -1,5 +1,6 @@
 package com.example.url_shortener.service;
 
+import com.example.url_shortener.analytics.UrlClickEventProducer;
 import com.example.url_shortener.dto.CreateShortUrlResponse;
 import com.example.url_shortener.entity.ShortUrl;
 import com.example.url_shortener.repository.ShortUrlRepository;
@@ -10,7 +11,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.BeforeEach;
+import com.example.url_shortener.analytics.UrlClickEvent;
 
+import static org.mockito.ArgumentMatchers.argThat;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 
@@ -28,6 +31,9 @@ class UrlServiceTest {
     @Mock
     private ShortCodeGenerator shortCodeGenerator;
 
+    @Mock
+    private UrlClickEventProducer urlClickEventProducer;
+
     private UrlService urlService;
 
     @BeforeEach
@@ -35,7 +41,8 @@ class UrlServiceTest {
         urlService = new UrlService(
                 shortUrlRepository,
                 shortCodeGenerator,
-                "http://localhost:8080"
+                "http://localhost:8080",
+                urlClickEventProducer
         );
     }
 
@@ -123,6 +130,25 @@ class UrlServiceTest {
         assertThrows(
                 com.example.url_shortener.exception.ShortUrlExpiredException.class,
                 () -> urlService.getOriginalUrl("expired1")
+        );
+        verifyNoInteractions(urlClickEventProducer);
+    }
+    @Test
+    void shouldPublishClickEventForSuccessfulRedirect() {
+        ShortUrl shortUrl = new ShortUrl();
+        shortUrl.setShortCode("abc1234");
+        shortUrl.setOriginalUrl("https://www.google.com");
+
+        when(shortUrlRepository.findByShortCode("abc1234"))
+                .thenReturn(Optional.of(shortUrl));
+
+        urlService.getOriginalUrl("abc1234");
+
+        verify(urlClickEventProducer).publish(
+                argThat(event ->
+                        event.shortCode().equals("abc1234")
+                                && event.clickedAt() != null
+                )
         );
     }
 }

@@ -9,7 +9,8 @@ import com.example.url_shortener.util.ShortCodeGenerator;
 import org.springframework.stereotype.Service;
 import com.example.url_shortener.exception.InvalidUrlException;
 import com.example.url_shortener.exception.ShortUrlExpiredException;
-
+import com.example.url_shortener.analytics.UrlClickEvent;
+import com.example.url_shortener.analytics.UrlClickEventProducer;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -22,15 +23,18 @@ public class UrlService {
     private final ShortUrlRepository shortUrlRepository;
     private final ShortCodeGenerator shortCodeGenerator;
     private final String baseUrl;
+    private final UrlClickEventProducer urlClickEventProducer;
     
     public UrlService(
             ShortUrlRepository shortUrlRepository,
             ShortCodeGenerator shortCodeGenerator,
-            @Value("${app.base-url}") String baseUrl
+            @Value("${app.base-url}") String baseUrl,
+            UrlClickEventProducer urlClickEventProducer
     ) {
         this.shortUrlRepository = shortUrlRepository;
         this.shortCodeGenerator = shortCodeGenerator;
         this.baseUrl = baseUrl;
+        this.urlClickEventProducer = urlClickEventProducer;
     }
 
     public CreateShortUrlResponse createShortUrl(String originalUrl, OffsetDateTime expiresAt) {
@@ -58,6 +62,9 @@ public class UrlService {
             && shortUrl.getExpiresAt().isBefore(OffsetDateTime.now())) {
         throw new ShortUrlExpiredException(shortCode);
     }
+    urlClickEventProducer.publish(
+            new UrlClickEvent(shortCode, OffsetDateTime.now())
+    );
         return shortUrl.getOriginalUrl();
     }
 

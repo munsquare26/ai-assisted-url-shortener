@@ -486,3 +486,81 @@ What I learned
 The important part of this change was preserving existing behavior while extending the data model and API.
 
 Using a new migration, keeping the new column nullable, and testing both old and new behavior made the change safer than modifying the original implementation directly.
+## 12. Asynchronous analytics with Kafka
+
+**What I was working on**
+
+I wanted analytics to be handled asynchronously so the redirect path would not need to update analytics data directly before returning the response.
+
+The intended behavior was:
+
+`successful redirect -> publish click event -> Kafka consumer -> update analytics`
+
+**How I used AI**
+
+I used ChatGPT to help design the producer/consumer flow and identify where analytics should be triggered.
+
+The decision was to publish an analytics event only after a short code is successfully resolved and confirmed to be unexpired.
+
+This means missing and expired URLs do not generate click events.
+
+**What changed**
+
+I added:
+
+* a `UrlClickEvent` model
+* a Kafka producer
+* Kafka publishing in the successful redirect path
+* a Kafka consumer
+* asynchronous updates to `click_count`
+* updates to `last_accessed_at`
+
+I also added service tests verifying that successful redirects publish an event and expired redirects do not.
+
+**Issue found during implementation**
+
+The initial Kafka serializer configuration failed when the application started.
+
+The application threw:
+
+`NoClassDefFoundError: com/fasterxml/jackson/core/type/TypeReference`
+
+The original serializer configuration was not compatible with the Spring Boot 4 / Spring Kafka 4 dependency stack being used by the project.
+
+**What I changed**
+
+I reviewed the runtime error and updated the Kafka serializer/deserializer configuration to use the Jackson-compatible classes provided by the current Spring Kafka version.
+
+I then reran the tests and restarted the application.
+
+**How I validated it**
+
+I first verified that the application started successfully with both PostgreSQL and Kafka running.
+
+I then requested an existing short URL and received the expected:
+
+`HTTP 302`
+
+After the redirect, I queried PostgreSQL directly.
+
+The result showed:
+
+`click_count = 1`
+
+and `last_accessed_at` was populated with the time of the redirect.
+
+This confirmed the complete asynchronous flow:
+
+`HTTP redirect -> Kafka producer -> Kafka broker -> Kafka consumer -> PostgreSQL`
+
+**AI tool:** ChatGPT, Github Copilot
+**Outcome:** Initial configuration required correction after runtime validation; final implementation verified end-to-end
+
+**What I learned**
+
+This was another case where compilation and unit tests were not enough to validate the integration.
+
+The Kafka configuration issue only appeared when the application started and attempted to construct the real consumer.
+
+Running the complete system locally exposed the compatibility issue and confirmed that integration testing is necessary for infrastructure-dependent behavior.
+
