@@ -9,7 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
+import org.junit.jupiter.api.BeforeEach;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,8 +25,16 @@ class UrlServiceTest {
     @Mock
     private ShortCodeGenerator shortCodeGenerator;
 
-    @InjectMocks
     private UrlService urlService;
+
+    @BeforeEach
+    void setUp() {
+        urlService = new UrlService(
+                shortUrlRepository,
+                shortCodeGenerator,
+                "http://localhost:8080"
+        );
+    }
 
     @Test
     void shouldCreateShortUrl() {

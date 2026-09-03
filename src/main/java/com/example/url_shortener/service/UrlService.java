@@ -1,5 +1,6 @@
 package com.example.url_shortener.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import com.example.url_shortener.exception.ShortUrlNotFoundException;
 import com.example.url_shortener.dto.CreateShortUrlResponse;
 import com.example.url_shortener.entity.ShortUrl;
@@ -18,19 +19,22 @@ public class UrlService {
 
     private final ShortUrlRepository shortUrlRepository;
     private final ShortCodeGenerator shortCodeGenerator;
-
+    private final String baseUrl;
+    
     public UrlService(
             ShortUrlRepository shortUrlRepository,
-            ShortCodeGenerator shortCodeGenerator
+            ShortCodeGenerator shortCodeGenerator,
+            @Value("${app.base-url}") String baseUrl
     ) {
         this.shortUrlRepository = shortUrlRepository;
         this.shortCodeGenerator = shortCodeGenerator;
+        this.baseUrl = baseUrl;
     }
 
     public CreateShortUrlResponse createShortUrl(String originalUrl) {
         validateUrl(originalUrl);
         String shortCode = generateUniqueShortCode();
-
+        
         ShortUrl shortUrl = new ShortUrl();
         shortUrl.setShortCode(shortCode);
         shortUrl.setOriginalUrl(originalUrl);
@@ -40,7 +44,7 @@ public class UrlService {
         ShortUrl saved = shortUrlRepository.save(shortUrl);
         return new CreateShortUrlResponse(
                 saved.getShortCode(),
-                "http://localhost:8080/" + saved.getShortCode(),
+                baseUrl + "/" + saved.getShortCode(),
                 saved.getOriginalUrl()
         );
     }

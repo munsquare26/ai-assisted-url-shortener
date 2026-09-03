@@ -292,7 +292,7 @@ I reviewed what should happen when a client requests a short code that doesn't e
 
 The initial implementation used a generic `IllegalArgumentException`.
 
-During review with ChatGPT, we identified that a missing short URL is an expected application condition and should have an explicit domain exception and HTTP response.
+During review with Github Copilot, we identified that a missing short URL is an expected application condition and should have an explicit domain exception and HTTP response.
 
 The proposed change is to introduce a `ShortUrlNotFoundException` and map it to:
 
@@ -302,7 +302,7 @@ The proposed change is to introduce a `ShortUrlNotFoundException` and map it to:
 
 I accepted the design change because it makes the API contract clearer and avoids representing an expected lookup failure as an internal application error.
 
-**AI tool:** ChatGPT
+**AI tool:** Github Colpilot
 **Outcome:** Initial approach revised
 
 **Status:** In progress
@@ -317,7 +317,7 @@ After manually validating the create and redirect flows, I wanted automated test
 
 **How I used AI**
 
-I used ChatGPT to identify useful service-level test cases and generate an initial Mockito-based test structure.
+I used Github Copilot to identify useful service-level test cases and generate an initial Mockito-based test structure.
 
 The initial tests covered:
 
@@ -364,7 +364,7 @@ After moving validation to the beginning of the service method, all tests passed
 
 `Tests run: 5, Failures: 0, Errors: 0`
 
-**AI tool:** ChatGPT
+**AI tool:** Github Copilot
 **Outcome:** AI-generated test exposed an implementation issue; implementation was edited and revalidated
 
 **What I learned**
@@ -372,3 +372,48 @@ After moving validation to the beginning of the service method, all tests passed
 This was a useful example of using AI for more than generating production code. The suggested negative test exposed behavior that had passed the earlier happy-path tests and manual API checks.
 
 The important part was not simply making the test green. I reviewed why the repository was being called and changed the service ordering so invalid input fails before unnecessary work is performed.
+
+10. Externalizing the application base URL
+
+What I was working on
+
+The create-short-URL response was building the short URL using a hard-coded http://localhost:8080 value. That works locally but would be incorrect when the application is deployed to another environment.
+
+How I used AI
+
+I used Copilot  to review this and move the base URL into application configuration using app.base-url, with support for an environment variable.
+
+The first implementation injected the configuration using @Value directly on a field.
+
+What happened
+
+The Spring application could populate the field, but the Mockito service test does not start a Spring context. As a result, baseUrl was null during the unit test and the generated value became:
+
+null/abc1234
+
+The existing test caught this immediately.
+
+What I changed
+
+Instead of modifying the test to use reflection or starting a Spring context just to populate the field, I changed UrlService to receive the base URL through constructor injection.
+
+The unit test now explicitly creates the service with:
+
+http://localhost:8080
+
+This keeps the service configuration explicit and allows the class to be tested without requiring Spring.
+
+How I validated it
+
+I ran:
+
+./mvnw test
+
+All tests passed after the change.
+
+AI tool: Github Copilot
+Outcome: Initial suggestion exposed a testability issue; design was revised and revalidated
+
+What I learned
+
+Externalizing configuration solved the deployment concern, but the first implementation made the dependency less visible to unit tests. Constructor injection made that dependency explicit and kept the service easy to test without loading the Spring application context.
