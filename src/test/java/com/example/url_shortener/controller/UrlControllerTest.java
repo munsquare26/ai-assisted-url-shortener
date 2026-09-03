@@ -1,6 +1,7 @@
 package com.example.url_shortener.controller;
 
 import com.example.url_shortener.dto.CreateShortUrlResponse;
+import com.example.url_shortener.entity.ShortUrl;
 import com.example.url_shortener.exception.InvalidUrlException;
 import com.example.url_shortener.exception.ShortUrlExpiredException;
 import com.example.url_shortener.exception.ShortUrlNotFoundException;
@@ -20,6 +21,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.time.OffsetDateTime;
 
 @WebMvcTest({UrlController.class, RedirectController.class})
 class UrlControllerTest {
@@ -110,5 +113,25 @@ class UrlControllerTest {
                                 }
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+    @Test
+    void shouldReturnUrlStats() throws Exception {
+        ShortUrl shortUrl = new ShortUrl();
+        shortUrl.setShortCode("abc1234");
+        shortUrl.setOriginalUrl("https://example.com");
+        shortUrl.setClickCount(3L);
+        shortUrl.setCreatedAt(OffsetDateTime.parse("2026-09-03T05:00:00Z"));
+        shortUrl.setLastAccessedAt(OffsetDateTime.parse("2026-09-03T05:10:00Z"));
+
+        when(urlService.getStats("abc1234"))
+                .thenReturn(shortUrl);
+
+        mockMvc.perform(get("/api/v1/urls/abc1234/stats"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.shortCode").value("abc1234"))
+                .andExpect(jsonPath("$.originalUrl").value("https://example.com"))
+                .andExpect(jsonPath("$.clickCount").value(3))
+                .andExpect(jsonPath("$.createdAt").value("2026-09-03T05:00:00Z"))
+                .andExpect(jsonPath("$.lastAccessedAt").value("2026-09-03T05:10:00Z"));
     }
 }

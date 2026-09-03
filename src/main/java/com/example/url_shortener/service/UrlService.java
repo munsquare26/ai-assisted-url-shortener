@@ -68,6 +68,11 @@ public class UrlService {
         return shortUrl.getOriginalUrl();
     }
 
+    public ShortUrl getStats(String shortCode) {
+        return shortUrlRepository.findByShortCode(shortCode)
+                .orElseThrow(() -> new ShortUrlNotFoundException("Short URL not found"));
+    }
+    
     private String generateUniqueShortCode() {
         String shortCode;
 
