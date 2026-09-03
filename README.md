@@ -380,6 +380,31 @@ HTTP 410 Gone
 
 # Working Example
 
+## Spring Boot Application Running
+
+![Spring Boot application running](docs/screenshots/springboot_app_running.png)
+
+## Create Short URL
+
+![Create short URL](docs/screenshots/create_short_url.png)
+
+## Database Record
+
+![Database record](docs/screenshots/database_record.png)
+
+## Redirect Short URL
+
+![Redirect short URL](docs/screenshots/redirect_url.png)
+
+## Invalid URL Validation
+
+![Invalid URL validation](docs/screenshots/invalid_url.png)
+
+## Expired URL
+
+![Expired URL](docs/screenshots/expired_url.png)
+
+
 The project was manually validated in addition to automated testing.
 
 ## URL Creation
