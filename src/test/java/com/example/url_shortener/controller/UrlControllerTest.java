@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(UrlController.class)
+@WebMvcTest({UrlController.class, RedirectController.class})
 class UrlControllerTest {
 
     @Autowired
@@ -59,7 +59,7 @@ class UrlControllerTest {
         when(urlService.getOriginalUrl("abc1234"))
                 .thenReturn("https://example.com");
 
-        mockMvc.perform(get("/api/v1/urls/abc1234"))
+        mockMvc.perform(get("/abc1234"))
                 .andExpect(status().isFound())
                 .andExpect(header().string("Location", "https://example.com"));
     }
@@ -69,7 +69,7 @@ class UrlControllerTest {
         when(urlService.getOriginalUrl("missing"))
                 .thenThrow(new ShortUrlNotFoundException("Short URL not found"));
 
-        mockMvc.perform(get("/api/v1/urls/missing"))
+        mockMvc.perform(get("/missing"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("SHORT_URL_NOT_FOUND"));
     }
@@ -79,7 +79,7 @@ class UrlControllerTest {
         when(urlService.getOriginalUrl("expired"))
                 .thenThrow(new ShortUrlExpiredException("Short URL has expired"));
 
-        mockMvc.perform(get("/api/v1/urls/expired"))
+        mockMvc.perform(get("/expired"))
                 .andExpect(status().isGone())
                 .andExpect(jsonPath("$.error").value("SHORT_URL_EXPIRED"));
     }
