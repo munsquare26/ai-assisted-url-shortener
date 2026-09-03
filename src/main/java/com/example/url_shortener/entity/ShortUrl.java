@@ -26,6 +26,9 @@ public class ShortUrl {
     @Column(name = "last_accessed_at")
     private OffsetDateTime lastAccessedAt;
 
+    @Column(name = "expires_at")
+    private OffsetDateTime expiresAt;
+
     public ShortUrl() {
     }
 
@@ -71,5 +74,13 @@ public class ShortUrl {
 
     public void setLastAccessedAt(OffsetDateTime lastAccessedAt) {
         this.lastAccessedAt = lastAccessedAt;
+    }
+
+    public OffsetDateTime getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(OffsetDateTime expiresAt) {
+        this.expiresAt = expiresAt;
     }
 }

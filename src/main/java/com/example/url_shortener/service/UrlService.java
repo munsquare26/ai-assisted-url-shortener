@@ -8,6 +8,8 @@ import com.example.url_shortener.repository.ShortUrlRepository;
 import com.example.url_shortener.util.ShortCodeGenerator;
 import org.springframework.stereotype.Service;
 import com.example.url_shortener.exception.InvalidUrlException;
+import com.example.url_shortener.exception.ShortUrlExpiredException;
+
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -31,7 +33,7 @@ public class UrlService {
         this.baseUrl = baseUrl;
     }
 
-    public CreateShortUrlResponse createShortUrl(String originalUrl) {
+    public CreateShortUrlResponse createShortUrl(String originalUrl, OffsetDateTime expiresAt) {
         validateUrl(originalUrl);
         String shortCode = generateUniqueShortCode();
         
@@ -39,6 +41,7 @@ public class UrlService {
         shortUrl.setShortCode(shortCode);
         shortUrl.setOriginalUrl(originalUrl);
         shortUrl.setCreatedAt(OffsetDateTime.now());
+        shortUrl.setExpiresAt(expiresAt);
         shortUrl.setClickCount(0L);
 
         ShortUrl saved = shortUrlRepository.save(shortUrl);
@@ -51,7 +54,10 @@ public class UrlService {
     public String getOriginalUrl(String shortCode) {
         ShortUrl shortUrl = shortUrlRepository.findByShortCode(shortCode)
                 .orElseThrow(() -> new ShortUrlNotFoundException(shortCode));
-
+        if (shortUrl.getExpiresAt() != null
+            && shortUrl.getExpiresAt().isBefore(OffsetDateTime.now())) {
+        throw new ShortUrlExpiredException(shortCode);
+    }
         return shortUrl.getOriginalUrl();
     }
 

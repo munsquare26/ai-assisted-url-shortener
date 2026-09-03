@@ -10,10 +10,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.BeforeEach;
+
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,7 +48,7 @@ class UrlServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         CreateShortUrlResponse response =
-                urlService.createShortUrl("https://www.google.com");
+                urlService.createShortUrl("https://www.google.com", null);
 
         assertEquals("abc1234", response.getShortCode());
         assertEquals("http://localhost:8080/abc1234", response.getShortUrl());
@@ -71,7 +74,7 @@ class UrlServiceTest {
     void shouldRejectInvalidUrl() {
         assertThrows(
                 com.example.url_shortener.exception.InvalidUrlException.class,
-                () -> urlService.createShortUrl("abc")
+                () -> urlService.createShortUrl("abc", null)
         );
 
         verifyNoInteractions(shortUrlRepository);
@@ -85,6 +88,41 @@ class UrlServiceTest {
         assertThrows(
                 com.example.url_shortener.exception.ShortUrlNotFoundException.class,
                 () -> urlService.getOriginalUrl("missing")
+        );
+    }
+
+    @Test
+    void shouldCreateShortUrlWithExpiration() {
+        OffsetDateTime expiresAt = OffsetDateTime.now().plusDays(7);
+
+        when(shortCodeGenerator.generate()).thenReturn("exp1234");
+        when(shortUrlRepository.existsByShortCode("exp1234")).thenReturn(false);
+
+        when(shortUrlRepository.save(any(ShortUrl.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        urlService.createShortUrl(
+                "https://www.google.com",
+                expiresAt
+        );
+
+        verify(shortUrlRepository).save(argThat(shortUrl ->
+                expiresAt.equals(shortUrl.getExpiresAt())
+        ));
+    }
+    @Test
+    void shouldRejectExpiredShortUrl() {
+        ShortUrl shortUrl = new ShortUrl();
+        shortUrl.setShortCode("expired1");
+        shortUrl.setOriginalUrl("https://www.google.com");
+        shortUrl.setExpiresAt(OffsetDateTime.now().minusMinutes(1));
+
+        when(shortUrlRepository.findByShortCode("expired1"))
+                .thenReturn(Optional.of(shortUrl));
+
+        assertThrows(
+                com.example.url_shortener.exception.ShortUrlExpiredException.class,
+                () -> urlService.getOriginalUrl("expired1")
         );
     }
 }

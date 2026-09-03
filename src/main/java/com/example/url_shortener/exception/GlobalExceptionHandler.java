@@ -32,4 +32,16 @@ public class GlobalExceptionHandler {
                         "message", ex.getMessage()
                 ));
     }
+
+    @ExceptionHandler(ShortUrlExpiredException.class)
+    public ResponseEntity<Map<String, String>> handleShortUrlExpired(
+            ShortUrlExpiredException ex
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.GONE)
+                .body(Map.of(
+                        "error", "SHORT_URL_EXPIRED",
+                        "message", ex.getMessage()
+                ));
+    }
 }

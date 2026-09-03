@@ -417,3 +417,72 @@ Outcome: Initial suggestion exposed a testability issue; design was revised and 
 What I learned
 
 Externalizing configuration solved the deployment concern, but the first implementation made the dependency less visible to unit tests. Constructor injection made that dependency explicit and kept the service easy to test without loading the Spring application context.
+
+11. Brownfield change — optional URL expiration
+
+What I was working on
+
+I wanted to demonstrate a brownfield change by extending the existing URL shortener without breaking the original behavior.
+
+The new requirement was:
+
+“Users should optionally be able to set an expiration time when creating a short URL. After expiration, the short URL should no longer redirect.”
+
+How I used AI
+
+I used ChatGPT to break the change into smaller steps:
+
+add a nullable database column through a new Flyway migration
+update the existing JPA entity
+extend the create request without breaking existing callers
+persist the expiration timestamp
+add service-level tests
+enforce expiration during redirect
+return an explicit HTTP response for expired URLs
+
+What I decided
+
+I made expires_at nullable so existing short URLs continue to behave exactly as before.
+
+A NULL expiration means the URL does not expire.
+
+For expired URLs, I chose:
+
+HTTP 410 Gone
+
+instead of 404 Not Found.
+
+The resource existed, but it is no longer available because its expiration condition has been reached, so 410 communicates that state more clearly.
+
+What changed
+
+I added a new Flyway migration rather than modifying the original migration.
+
+The API now accepts an optional expiresAt value when creating a short URL.
+
+During redirect, the service checks whether the stored expiration timestamp is in the past. If it is, the service throws a ShortUrlExpiredException, which is mapped to an HTTP 410 Gone response.
+
+How I validated it
+
+I added an automated test verifying that an expiration value is persisted and another test verifying that expired URLs are rejected.
+
+I also manually created a URL with an expiration time in the past and requested the generated short code.
+
+The API returned:
+
+HTTP/1.1 410
+
+with:
+
+SHORT_URL_EXPIRED
+
+All Maven tests continued to pass after the change.
+
+AI tool: ChatGPT, Github Copilot
+Outcome: Accepted with engineer-reviewed API and backward-compatibility decisions
+
+What I learned
+
+The important part of this change was preserving existing behavior while extending the data model and API.
+
+Using a new migration, keeping the new column nullable, and testing both old and new behavior made the change safer than modifying the original implementation directly.
